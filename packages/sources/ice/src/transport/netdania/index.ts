@@ -147,12 +147,16 @@ export type InstrumentPartialUpdate = {
  * It tries to keep the connection alive.
  *
  * Any change to subscriptions will not take effect until refresh().
+ *
+ * LVP (Last Value Persistence): Emits 'heartbeat' events at regular intervals to allow
+ * the transport to extend cache TTLs during off-market hours when no price updates are received.
  */
 export class StreamingClient extends EventEmitter {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   private connection: JsApi.JSONConnection
   private requestIdToInstrument: Map<RequestId, Instrument> = new Map()
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null
 
   constructor(public readonly cfg: BaseEndpointTypes['Settings']) {
     super()
@@ -176,19 +180,48 @@ export class StreamingClient extends EventEmitter {
 
     this.connection.addListener(Events.ONCONNECTED, (sessionId: string) => {
       logger.info('ONCONNECTED: ' + sessionId)
+      this.startHeartbeat()
     })
 
     this.connection.addListener(Events.ONRECONNECTED, (sessionId: string) => {
       logger.info('ONRECONNECTED: ' + sessionId)
+      this.startHeartbeat()
     })
 
     // is followed by an automatic reconnection attempt
     this.connection.addListener(Events.ONDISCONNECTED, (msg: string, url: string) => {
       logger.warn('ONDISCONNECTED: ' + msg + ' ' + Utils.sanitize(url) + '\n')
+      this.stopHeartbeat()
     })
 
     this.connection.addListener(Events.ONERROR, this.onErrorHandler)
     this.connection.addListener(Events.ONPRICEUPDATE, this.onPriceUpdateHandler)
+  }
+
+  /**
+   * Starts the LVP heartbeat interval that emits 'heartbeat' events to extend cache TTLs.
+   */
+  private startHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      return // Already running
+    }
+    const intervalMs = this.cfg.LVP_HEARTBEAT_INTERVAL
+    logger.info(`Starting LVP heartbeat with interval ${intervalMs}ms`)
+    this.heartbeatInterval = setInterval(() => {
+      logger.debug('LVP heartbeat: emitting heartbeat event to extend cache TTLs')
+      this.emit('heartbeat')
+    }, intervalMs)
+  }
+
+  /**
+   * Stops the LVP heartbeat interval.
+   */
+  private stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      logger.info('Stopping LVP heartbeat')
+      clearInterval(this.heartbeatInterval)
+      this.heartbeatInterval = null
+    }
   }
 
   /**
@@ -269,6 +302,7 @@ export class StreamingClient extends EventEmitter {
   }
 
   public disconnect() {
+    this.stopHeartbeat()
     this.removeAllInstruments()
     this.connection._tryReconnect = false // disable auto-reconnect
     this.connection.disconnect()

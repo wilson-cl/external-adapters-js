@@ -45,4 +45,10 @@ export const config = new AdapterConfig({
     type: 'number',
     default: 4000,
   },
+  LVP_HEARTBEAT_INTERVAL: {
+    description:
+      'Interval in milliseconds for Last Value Persistence heartbeat to extend cache TTLs during off-market hours',
+    type: 'number',
+    default: 30000,
+  },
 })
