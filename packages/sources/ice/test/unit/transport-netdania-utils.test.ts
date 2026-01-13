@@ -160,7 +160,7 @@ describe('LVP (Last Value Persistence)', () => {
     USER_GROUP: 'test.group',
     POLLING_INTERVAL: 2000,
     CONNECTING_TIMEOUT_MS: 4000,
-    CACHE_MAX_AGE: 90000,
+    CACHE_MAX_AGE: 300000, // 5 minutes - exceeds NetDania heartbeat interval for LVP
   } as BaseEndpointTypes['Settings']
 
   beforeEach(() => {

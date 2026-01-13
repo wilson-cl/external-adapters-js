@@ -1,0 +1,29 @@
+services:
+  ice-ea:
+    build:
+      context: ../../../..
+      dockerfile: Dockerfile
+      args:
+        location: packages/sources/ice
+        package: '@chainlink/ice-adapter'
+    ports:
+      - '8080:8080'
+    env_file:
+      - ../.env
+    environment:
+      - EA_PORT=8080
+      - LOG_LEVEL=debug
+      - CACHE_MAX_AGE=300000
+
+  requester:
+    build:
+      context: .
+      dockerfile: Dockerfile.requester
+    depends_on:
+      - ice-ea
+    environment:
+      - EA_URL=http://ice-ea:8080
+      - REQUEST_INTERVAL=60
+    restart: on-failure
+    volumes:
+      - ./logs:/app/logs
