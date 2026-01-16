@@ -45,12 +45,4 @@ export const config = new AdapterConfig({
     type: 'number',
     default: 4000,
   },
-  // Override default CACHE_MAX_AGE to support LVP
-  // NetDania heartbeat fires ~every 180 seconds, so cache TTL must exceed this interval
-  CACHE_MAX_AGE: {
-    description:
-      'Maximum age in ms for cache entries. Set higher than NetDania heartbeat interval (~180s) to support Last Value Persistence during off-market hours.',
-    type: 'number',
-    default: 300000, // 5 minutes - exceeds NetDania heartbeat interval
-  },
 })
